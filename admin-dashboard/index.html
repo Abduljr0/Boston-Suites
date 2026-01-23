@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boston Suites - Admin Dashboard</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Gilda+Display&family=Jost:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons (Flaticon/FontAwesome) - Using FontAwesome CDN for admin consistency -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <span class="brand-name">Boston Suites</span>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-item active" data-target="view-dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="menu-item" data-target="view-availability">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Check Availability</span>
+                </div>
+                <div class="menu-item" data-target="view-book-room">
+                    <i class="fas fa-concierge-bell"></i>
+                    <span>Book Room</span>
+                </div>
+                <div class="menu-item" data-target="view-bookings">
+                    <i class="fas fa-list-alt"></i>
+                    <span>Bookings</span>
+                </div>
+                <div class="menu-item" data-target="view-clients">
+                    <i class="fas fa-users"></i>
+                    <span>Clients</span>
+                </div>
+                <div class="menu-item disabled" data-target="view-payments" style="opacity: 0.5; cursor: not-allowed;">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Payments (Soon)</span>
+                </div>
+                <div class="menu-item" data-target="view-settings">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer sticky-bottom">
+                <div class="menu-item" id="nav-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <button id="toggleSidebar" class="toggle-sidebar-btn">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <div class="user-profile dropdown">
+                    <div class="user-info" id="userDropdownTrigger">
+                        <span>Admin</span>
+                        <div class="user-avatar">A</div>
+                        <i class="fas fa-chevron-down" style="font-size: 0.8rem; color: #aaa;"></i>
+                    </div>
+                    <div class="dropdown-menu" id="userDropdownMenu">
+                        <a href="#" class="dropdown-item" id="top-bar-logout">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-wrapper">
+
+                <!-- 1. Dashboard Overview -->
+                <section id="view-dashboard" class="view-section active">
+                    <h2>Dashboard Overview</h2>
+                    <br>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-bed"></i></div>
+                            <div class="stat-info">
+                                <h3>45</h3>
+                                <p>Total Rooms</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                            <div class="stat-info">
+                                <h3>32</h3>
+                                <p>Occupied</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-door-open"></i></div>
+                            <div class="stat-info">
+                                <h3>13</h3>
+                                <p>Available</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
+                            <div class="stat-info">
+                                <h3>5</h3>
+                                <p>Check-ins Today</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fas fa-walking"></i></div>
+                            <div class="stat-info">
+                                <h3>8</h3>
+                                <p>Check-outs Today</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. Check Availability -->
+                <section id="view-availability" class="view-section">
+                    <h2>Check Availability</h2>
+                    <br>
+                    <div class="card">
+                        <form id="checkAvailabilityForm">
+                            <div class="stats-grid"
+                                style="margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                <div class="form-group">
+                                    <label>Room Type</label>
+                                    <select class="form-control">
+                                        <option>All Types</option>
+                                        <option>Luxury Suite</option>
+                                        <option>Double Room</option>
+                                        <option>Single Room</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Check-in Date</label>
+                                    <input type="date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nights</label>
+                                    <input type="number" class="form-control" min="1" value="1" required>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: flex-end;">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Check
+                                        Availability</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="availabilityResults" style="display: none;">
+                        <div class="card">
+                            <h3>Available Rooms</h3>
+                            <br>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Room #</th>
+                                            <th>Type</th>
+                                            <th>Price / Night</th>
+                                            <th>Features</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>101</td>
+                                            <td>Luxury Suite</td>
+                                            <td>$250</td>
+                                            <td>Ocean View, King Bed</td>
+                                            <td><button class="btn btn-primary"
+                                                    style="padding: 0.5rem 1rem;">Book</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>104</td>
+                                            <td>Luxury Suite</td>
+                                            <td>$250</td>
+                                            <td>Garden View, King Bed</td>
+                                            <td><button class="btn btn-primary"
+                                                    style="padding: 0.5rem 1rem;">Book</button></td>
+                                        </tr>
+                                        <tr>
+                                            <td>205</td>
+                                            <td>Double Room</td>
+                                            <td>$120</td>
+                                            <td>2 Queen Beds</td>
+                                            <td><button class="btn btn-primary"
+                                                    style="padding: 0.5rem 1rem;">Book</button></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 3. Book Room -->
+                <section id="view-book-room" class="view-section">
+                    <h2>New Booking</h2>
+                    <br>
+                    <div class="card" style="max-width: 800px;">
+                        <form id="bookRoomForm">
+                            <div class="form-group">
+                                <label>Review Selection</label>
+                                <input type="text" class="form-control"
+                                    value="Select a room first via Check Availability" readonly disabled
+                                    style="background: #f9f9f9;">
+                                <small style="color: grey;">(Or manually enter room number below)</small>
+                            </div>
+
+                            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #eee;">
+
+                            <div class="stats-grid" style="margin-bottom: 0;">
+                                <div class="form-group">
+                                    <label>Client Name</label>
+                                    <input type="text" class="form-control" required placeholder="Full Name">
+                                </div>
+                                <div class="form-group">
+                                    <label>Phone Number</label>
+                                    <input type="tel" class="form-control" required placeholder="+1 234 567 8900">
+                                </div>
+                            </div>
+
+                            <div class="stats-grid" style="margin-bottom: 0;">
+                                <div class="form-group">
+                                    <label>Check-in Date</label>
+                                    <input type="date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nights</label>
+                                    <input type="number" class="form-control" min="1" value="1">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Total Price (Est.)</label>
+                                <input type="text" class="form-control" value="$0.00" readonly
+                                    style="font-weight: bold; font-size: 1.1rem; color: var(--primary-color);">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Confirm Booking</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- 4. Bookings List -->
+                <section id="view-bookings" class="view-section">
+                    <h2>Manage Bookings</h2>
+                    <br>
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Client</th>
+                                        <th>Room</th>
+                                        <th>Check-in</th>
+                                        <th>Check-out</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>#BK-2023001</td>
+                                        <td>John Doe</td>
+                                        <td>101 (Suite)</td>
+                                        <td>2024-06-15</td>
+                                        <td>2024-06-20</td>
+                                        <td><span class="status-badge status-confirmed">Confirmed</span></td>
+                                        <td>
+                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
+                                                    class="fas fa-eye"></i></button>
+                                            <button class="btn btn-outline"
+                                                style="padding: 0.2rem 0.5rem; color: var(--danger-color); border-color: var(--danger-color);"><i
+                                                    class="fas fa-times"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>#BK-2023002</td>
+                                        <td>Sarah Smith</td>
+                                        <td>205 (Double)</td>
+                                        <td>2024-06-16</td>
+                                        <td>2024-06-18</td>
+                                        <td><span class="status-badge status-active">Active</span></td>
+                                        <td>
+                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
+                                                    class="fas fa-eye"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>#BK-2023003</td>
+                                        <td>Mike Johnson</td>
+                                        <td>302 (Single)</td>
+                                        <td>2024-06-20</td>
+                                        <td>2024-06-22</td>
+                                        <td><span class="status-badge status-pending">Pending</span></td>
+                                        <td>
+                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
+                                                    class="fas fa-eye"></i></button>
+                                            <button class="btn btn-outline"
+                                                style="padding: 0.2rem 0.5rem; color: var(--danger-color); border-color: var(--danger-color);"><i
+                                                    class="fas fa-times"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Clients -->
+                <section id="view-clients" class="view-section">
+                    <h2>Client Records</h2>
+                    <br>
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Client Name</th>
+                                        <th>Phone</th>
+                                        <th>Email</th>
+                                        <th>Total Bookings</th>
+                                        <th>Last Stay</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>John Doe</td>
+                                        <td>+1 555-0123</td>
+                                        <td>john.d@example.com</td>
+                                        <td>3</td>
+                                        <td>2023-12-10</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sarah Smith</td>
+                                        <td>+1 555-0199</td>
+                                        <td>sarah.s@example.com</td>
+                                        <td>1</td>
+                                        <td>2024-01-05</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. Settings -->
+                <section id="view-settings" class="view-section">
+                    <h2>Settings</h2>
+                    <br>
+
+                    <div class="card">
+
+                        <!-- Appearance -->
+                        <div class="settings-section">
+                            <div class="settings-header">
+                                <h3>Appearance</h3>
+                                <p>Customize the look and feel of the admin dashboard.</p>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Theme</h4>
+                                    <p>Select your preferred interface mode.</p>
+                                </div>
+                                <div class="theme-selector">
+                                    <div class="theme-option active" id="theme-light-btn" onclick="setTheme('light')">
+                                        <div
+                                            style="height: 40px; background: #eee; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px;">
+                                        </div>
+                                        <span>Light</span>
+                                    </div>
+                                    <div class="theme-option" id="theme-dark-btn" onclick="setTheme('dark')">
+                                        <div
+                                            style="height: 40px; background: #222; border: 1px solid #444; border-radius: 4px; margin-bottom: 5px;">
+                                        </div>
+                                        <span>Dark</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Admin Preferences -->
+                        <div class="settings-section">
+                            <div class="settings-header">
+                                <h3>Admin Preferences</h3>
+                                <p>Manage your personal dashboard experience.</p>
+                            </div>
+
+                            <div class="stats-grid" style="margin-bottom: 0px; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Default Landing Page</label>
+                                    <select class="form-control">
+                                        <option value="dashboard">Dashboard Overview</option>
+                                        <option value="bookings">Bookings List</option>
+                                        <option value="availability">Check Availability</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Date Format</label>
+                                    <select class="form-control">
+                                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="stats-grid" style="margin-bottom: 0px; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Currency Display (Placeholder)</label>
+                                    <select class="form-control" disabled>
+                                        <option value="USD">USD ($)</option>
+                                        <option value="KES">KES (Ksh)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Table Density</label>
+                                    <select class="form-control">
+                                        <option value="comfortable">Comfortable</option>
+                                        <option value="compact">Compact</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- System Configuration -->
+                        <div class="settings-section">
+                            <div class="settings-header">
+                                <h3>System Configuration <span class="coming-soon-badge">Coming Soon</span></h3>
+                                <p>Global settings affecting the booking engine and payments.</p>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Booking Rules</h4>
+                                    <p>Define check-in/out times and buffer periods.</p>
+                                </div>
+                                <button class="btn btn-outline" disabled>Configure</button>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Payment Methods</h4>
+                                    <p>Enable or disable specific payment gateways.</p>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" checked disabled>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span style="font-size: 0.9rem; margin-top: 2px;">Cash</span>
+
+                                    <label class="toggle-switch" style="margin-left: 10px;">
+                                        <input type="checkbox" disabled>
+                                        <span class="slider"></span>
+                                    </label>
+                                    <span style="font-size: 0.9rem; margin-top: 2px;">M-Pesa</span>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Tax & Service Fees</h4>
+                                    <p>Set automated tax calculations.</p>
+                                </div>
+                                <button class="btn btn-outline" disabled>Manage Rates</button>
+                            </div>
+
+                            <p
+                                style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-color); font-style: italic;">
+                                * These settings will be enabled once backend integration is complete.
+                            </p>
+                        </div>
+
+                        <!-- Security -->
+                        <div class="settings-section" style="border-bottom: none; padding-bottom: 0;">
+                            <div class="settings-header">
+                                <h3>Security <span class="coming-soon-badge">UI Only</span></h3>
+                                <p>Manage account security and session policies.</p>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Change Password</h4>
+                                    <p>Update your admin account password.</p>
+                                </div>
+                                <button class="btn btn-outline" disabled>Update</button>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Two-Factor Authentication</h4>
+                                    <p>Add an extra layer of security.</p>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" disabled>
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-info">
+                                    <h4>Session Timeout</h4>
+                                    <p>Auto-logout inactive users for security.</p>
+                                </div>
+                                <select class="form-control" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.8rem;"
+                                    disabled>
+                                    <option>30 Minutes</option>
+                                    <option>1 Hour</option>
+                                    <option>4 Hours</option>
+                                </select>
+                            </div>
+                        </div>
+
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- UI Scripts -->
+    <script src="js/ui.js"></script>
+</body>
+
+</html>

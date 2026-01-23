@@ -1,0 +1,82 @@
+/* styles.css - Admin Dashboard UI (Moonlit inspired) */
+
+/* Global dark theme */
+body {
+  background: #0f0f1a; /* deep dark background */
+  color: #e0e0e0;
+  font-family: 'Inter', 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Glassmorphism card */
+.card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  padding: 1.5rem;
+  margin: 1rem;
+}
+
+/* Navigation bar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+.navbar a {
+  color: #e0e0e0;
+  text-decoration: none;
+  margin: 0 0.75rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+.navbar a:hover {
+  color: #ffcc00;
+}
+
+/* Table styling */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.table th, .table td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.table th {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Buttons */
+.btn {
+  background: #ffcc00;
+  color: #0f0f1a;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn:hover {
+  background: #e6b800;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .navbar a {
+    margin: 0.5rem 0;
+  }
+}
