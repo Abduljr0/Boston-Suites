@@ -1,5 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 const dbPath = path.resolve(__dirname, 'boston_suites.db');
 
@@ -26,9 +27,14 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS rooms (
         id TEXT PRIMARY KEY,
         number TEXT NOT NULL,
-        type_id TEXT NOT NULL,
-        status TEXT DEFAULT 'ACTIVE', -- ACTIVE, MAINTENANCE
-        FOREIGN KEY (type_id) REFERENCES room_types(id)
+        name TEXT,
+        type TEXT NOT NULL, -- 1BR, 2BR, Suite, etc.
+        beds INTEGER DEFAULT 1,
+        price REAL NOT NULL,
+        description TEXT,
+        image_url TEXT,
+        status TEXT DEFAULT 'ACTIVE', -- ACTIVE, INACTIVE
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
     // 3. Clients
@@ -55,6 +61,10 @@ db.serialize(() => {
         FOREIGN KEY (client_id) REFERENCES clients(id)
     )`);
 
+    // Indices for performance on date ranges (Phase 6)
+    db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(check_in, check_out)`);
+    db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status)`);
+
     // Seed Data (if empty)
     db.get("SELECT count(*) as count FROM room_types", (err, row) => {
         if (row.count === 0) {
@@ -65,16 +75,16 @@ db.serialize(() => {
             stmt.run("rt_single", "Single Room", 80.00, 1, 0, JSON.stringify(["Standard", "Single Bed"]));
             stmt.finalize();
 
-            const roomStmt = db.prepare("INSERT INTO rooms VALUES (?, ?, ?, ?)");
+            const roomStmt = db.prepare("INSERT INTO rooms (id, number, name, type, beds, price, description, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
             // Luxury
-            roomStmt.run("rm_101", "101", "rt_luxury", "ACTIVE");
-            roomStmt.run("rm_104", "104", "rt_luxury", "ACTIVE");
+            roomStmt.run(uuidv4(), "101", "Ocean Breeze Suite", "Suite", 1, 250.00, "Stunning ocean view with king bed", "ACTIVE");
+            roomStmt.run(uuidv4(), "104", "Garden Serenity", "Suite", 1, 230.00, "Quiet garden view with luxury amenities", "ACTIVE");
             // Double
-            roomStmt.run("rm_205", "205", "rt_double", "ACTIVE");
-            roomStmt.run("rm_206", "206", "rt_double", "MAINTENANCE");
+            roomStmt.run(uuidv4(), "205", "City Light Double", "Double", 2, 150.00, "Two queen beds with city view", "ACTIVE");
+            roomStmt.run(uuidv4(), "206", "Standard Double", "Double", 2, 130.00, "Comfortable stay for small families", "INACTIVE");
             // Single
-            roomStmt.run("rm_301", "301", "rt_single", "ACTIVE");
-            roomStmt.run("rm_302", "302", "rt_single", "ACTIVE");
+            roomStmt.run(uuidv4(), "301", "Solo Traveler", "Single", 1, 90.00, "Perfect for business trips", "ACTIVE");
+            roomStmt.run(uuidv4(), "302", "Economy Single", "Single", 1, 75.00, "Budget friendly option", "ACTIVE");
             roomStmt.finalize();
         }
     });

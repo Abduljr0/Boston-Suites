@@ -39,9 +39,17 @@
                     <i class="fas fa-concierge-bell"></i>
                     <span>Book Room</span>
                 </div>
+                <div class="menu-item" data-target="view-rooms">
+                    <i class="fas fa-bed"></i>
+                    <span>Rooms</span>
+                </div>
                 <div class="menu-item" data-target="view-bookings">
                     <i class="fas fa-list-alt"></i>
                     <span>Bookings</span>
+                </div>
+                <div class="menu-item" data-target="view-revenue">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Revenue</span>
                 </div>
                 <div class="menu-item" data-target="view-clients">
                     <i class="fas fa-users"></i>
@@ -98,36 +106,36 @@
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-bed"></i></div>
                             <div class="stat-info">
-                                <h3>45</h3>
+                                <h3 id="stat-total-rooms">—</h3>
                                 <p>Total Rooms</p>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
                             <div class="stat-info">
-                                <h3>32</h3>
-                                <p>Occupied</p>
+                                <h3 id="stat-occupied">—</h3>
+                                <p>Occupied Today</p>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-door-open"></i></div>
                             <div class="stat-info">
-                                <h3>13</h3>
-                                <p>Available</p>
+                                <h3 id="stat-available">—</h3>
+                                <p>Available Now</p>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
                             <div class="stat-info">
-                                <h3>5</h3>
-                                <p>Check-ins Today</p>
+                                <h3 id="stat-checkins">—</h3>
+                                <p>Check-ins (Today)</p>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon"><i class="fas fa-walking"></i></div>
                             <div class="stat-info">
-                                <h3>8</h3>
-                                <p>Check-outs Today</p>
+                                <h3 id="stat-checkouts">—</h3>
+                                <p>Check-outs (Today)</p>
                             </div>
                         </div>
                     </div>
@@ -143,11 +151,12 @@
                                 style="margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
                                 <div class="form-group">
                                     <label>Room Type</label>
-                                    <select class="form-control">
-                                        <option>All Types</option>
-                                        <option>Luxury Suite</option>
-                                        <option>Double Room</option>
-                                        <option>Single Room</option>
+                                    <select class="form-control" required>
+                                        <option value="">Select Room Type</option>
+                                        <option value="Single">Single Room</option>
+                                        <option value="Double">Double Room</option>
+                                        <option value="Suite">Luxury Suite</option>
+                                        <option value="Family">Family Room</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
@@ -156,7 +165,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Nights</label>
-                                    <input type="number" class="form-control" min="1" value="1" required>
+                                    <input type="number" class="form-control" min="1" placeholder="e.g. 1" required>
                                 </div>
                                 <div class="form-group" style="display: flex; align-items: flex-end;">
                                     <button type="submit" class="btn btn-primary" style="width: 100%;">Check
@@ -181,31 +190,8 @@
                                             <th>Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>101</td>
-                                            <td>Luxury Suite</td>
-                                            <td>$250</td>
-                                            <td>Ocean View, King Bed</td>
-                                            <td><button class="btn btn-primary"
-                                                    style="padding: 0.5rem 1rem;">Book</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>104</td>
-                                            <td>Luxury Suite</td>
-                                            <td>$250</td>
-                                            <td>Garden View, King Bed</td>
-                                            <td><button class="btn btn-primary"
-                                                    style="padding: 0.5rem 1rem;">Book</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>205</td>
-                                            <td>Double Room</td>
-                                            <td>$120</td>
-                                            <td>2 Queen Beds</td>
-                                            <td><button class="btn btn-primary"
-                                                    style="padding: 0.5rem 1rem;">Book</button></td>
-                                        </tr>
+                                    <tbody id="availabilityTableBody">
+                                        <!-- Populated dynamically from API -->
                                     </tbody>
                                 </table>
                             </div>
@@ -222,9 +208,8 @@
                             <div class="form-group">
                                 <label>Review Selection</label>
                                 <input type="text" class="form-control"
-                                    value="Select a room first via Check Availability" readonly disabled
+                                    placeholder="Calculated after availability check" readonly disabled
                                     style="background: #f9f9f9;">
-                                <small style="color: grey;">(Or manually enter room number below)</small>
                             </div>
 
                             <hr style="margin: 1.5rem 0; border: 0; border-top: 1px solid #eee;">
@@ -247,7 +232,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Nights</label>
-                                    <input type="number" class="form-control" min="1" value="1">
+                                    <input type="number" class="form-control" min="1" placeholder="e.g. 1">
                                 </div>
                             </div>
 
@@ -262,7 +247,173 @@
                     </div>
                 </section>
 
-                <!-- 4. Bookings List -->
+                <!-- 4. Rooms Management -->
+                <section id="view-rooms" class="view-section">
+                    <div class="view-header">
+                        <h2>Rooms Management</h2>
+                        <button class="btn btn-primary" id="toggleAddRoomForm">
+                            <i class="fas fa-plus"></i> Add New Room
+                        </button>
+                    </div>
+                    <br>
+
+                    <!-- Collapsible Add Room Form -->
+                    <div id="addRoomCollapse" class="collapse-content">
+                        <div class="card">
+                            <form id="addRoomForm" enctype="multipart/form-data">
+                                <div class="stats-grid" style="margin-bottom: 0;">
+                                    <div class="form-group">
+                                        <label>Room Number/Name</label>
+                                        <input type="text" name="number" class="form-control" placeholder="e.g. 101"
+                                            required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Display Name</label>
+                                        <input type="text" name="name" class="form-control"
+                                            placeholder="e.g. Ocean Breeze Suite">
+                                    </div>
+                                </div>
+                                <div class="stats-grid" style="margin-bottom: 0;">
+                                    <div class="form-group">
+                                        <label>Room Type</label>
+                                        <select name="type" class="form-control" required>
+                                            <option value="">Select Type</option>
+                                            <option value="Single">Single Room</option>
+                                            <option value="Double">Double Room</option>
+                                            <option value="Suite">Luxury Suite</option>
+                                            <option value="Family">Family Room</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Beds Count</label>
+                                        <input type="number" name="beds" class="form-control" min="1" value="1"
+                                            required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Price per Night ($)</label>
+                                        <input type="number" name="price" class="form-control" min="0" step="0.01"
+                                            required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Description</label>
+                                    <textarea name="description" class="form-control" rows="2"
+                                        placeholder="Describe the room features..."></textarea>
+                                </div>
+                                <div class="stats-grid" style="margin-bottom: 0;">
+                                    <div class="form-group">
+                                        <label>Room Image</label>
+                                        <input type="file" name="image" class="form-control" accept="image/*">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Status</label>
+                                        <select name="status" class="form-control">
+                                            <option value="ACTIVE">Active</option>
+                                            <option value="INACTIVE">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-actions" style="margin-top: 1rem;">
+                                    <button type="submit" class="btn btn-primary" id="roomSubmitBtn">Create
+                                        Room</button>
+                                    <button type="button" class="btn btn-outline" id="cancelAddRoom">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="roomsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Room</th>
+                                        <th>Type</th>
+                                        <th>Beds</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="roomsTableBody">
+                                    <!-- Populated dynamically from API -->
+                                </tbody>
+                            </table>
+                            <div id="roomsEmptyState" class="empty-state" style="display: none;">
+                                <i class="fas fa-bed"></i>
+                                <p>No rooms added yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 5. Revenue Analytics -->
+                <section id="view-revenue" class="view-section">
+                    <h2>Revenue Analytics</h2>
+                    <br>
+
+                    <div class="card">
+                        <form id="revenueFilterForm">
+                            <div class="stats-grid"
+                                style="margin-bottom: 0; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                                <div class="form-group">
+                                    <label>Room</label>
+                                    <select id="rev-room-filter" class="form-control">
+                                        <option value="all">All Rooms</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Start Date</label>
+                                    <input type="date" id="rev-start-date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>End Date</label>
+                                    <input type="date" id="rev-end-date" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Quick Range</label>
+                                    <select id="rev-quick-range" class="form-control">
+                                        <option value="custom">Custom Range</option>
+                                        <option value="today">Today</option>
+                                        <option value="last7">Last 7 Days</option>
+                                        <option value="thisMonth" selected>This Month</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="display: flex; align-items: flex-end;">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">Generate
+                                        Report</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table id="revenueTable">
+                                <thead>
+                                    <tr>
+                                        <th>Room Name</th>
+                                        <th>Nights Occupied</th>
+                                        <th>Price / Night</th>
+                                        <th>Total Revenue</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="revenueTableBody">
+                                    <!-- Populated dynamically from API -->
+                                </tbody>
+                                <tfoot id="revenueTotal" style="font-weight: bold; background: #f9f9f9;">
+                                    <!-- Summary here -->
+                                </tfoot>
+                            </table>
+                            <div id="revenueEmptyState" class="empty-state" style="display: none;">
+                                <i class="fas fa-coins"></i>
+                                <p>No bookings in selected period</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 6. Manage Bookings -->
                 <section id="view-bookings" class="view-section">
                     <h2>Manage Bookings</h2>
                     <br>
@@ -280,56 +431,19 @@
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>#BK-2023001</td>
-                                        <td>John Doe</td>
-                                        <td>101 (Suite)</td>
-                                        <td>2024-06-15</td>
-                                        <td>2024-06-20</td>
-                                        <td><span class="status-badge status-confirmed">Confirmed</span></td>
-                                        <td>
-                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
-                                                    class="fas fa-eye"></i></button>
-                                            <button class="btn btn-outline"
-                                                style="padding: 0.2rem 0.5rem; color: var(--danger-color); border-color: var(--danger-color);"><i
-                                                    class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>#BK-2023002</td>
-                                        <td>Sarah Smith</td>
-                                        <td>205 (Double)</td>
-                                        <td>2024-06-16</td>
-                                        <td>2024-06-18</td>
-                                        <td><span class="status-badge status-active">Active</span></td>
-                                        <td>
-                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
-                                                    class="fas fa-eye"></i></button>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>#BK-2023003</td>
-                                        <td>Mike Johnson</td>
-                                        <td>302 (Single)</td>
-                                        <td>2024-06-20</td>
-                                        <td>2024-06-22</td>
-                                        <td><span class="status-badge status-pending">Pending</span></td>
-                                        <td>
-                                            <button class="btn btn-outline" style="padding: 0.2rem 0.5rem;"><i
-                                                    class="fas fa-eye"></i></button>
-                                            <button class="btn btn-outline"
-                                                style="padding: 0.2rem 0.5rem; color: var(--danger-color); border-color: var(--danger-color);"><i
-                                                    class="fas fa-times"></i></button>
-                                        </td>
-                                    </tr>
+                                <tbody id="bookingsTableBody">
+                                    <!-- Populated dynamically from API -->
                                 </tbody>
                             </table>
+                            <div id="bookingsEmptyState" class="empty-state" style="display: none;">
+                                <i class="fas fa-list-alt"></i>
+                                <p>No bookings found</p>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- 5. Clients -->
+                <!-- 6. Client Records (Moved down) -->
                 <section id="view-clients" class="view-section">
                     <h2>Client Records</h2>
                     <br>
@@ -345,23 +459,14 @@
                                         <th>Last Stay</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>John Doe</td>
-                                        <td>+1 555-0123</td>
-                                        <td>john.d@example.com</td>
-                                        <td>3</td>
-                                        <td>2023-12-10</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Sarah Smith</td>
-                                        <td>+1 555-0199</td>
-                                        <td>sarah.s@example.com</td>
-                                        <td>1</td>
-                                        <td>2024-01-05</td>
-                                    </tr>
+                                <tbody id="clientsTableBody">
+                                    <!-- Populated dynamically from API -->
                                 </tbody>
                             </table>
+                            <div id="clientsEmptyState" class="empty-state" style="display: none;">
+                                <i class="fas fa-users"></i>
+                                <p>No clients found</p>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -541,6 +646,23 @@
             </div>
         </main>
     </div>
+
+    <!-- Global Application Configuration (Runtime) -->
+    <!-- 
+        IMPORTANT: Edit this configuration block to change API endpoints
+        without rebuilding or modifying JavaScript files.
+        
+        For WSL + Windows: Use WSL IP address (run: ip addr show eth0)
+        For Production: Use your production API domain
+        For Local: Use http://172.23.89.211:5005/api/v1
+    -->
+    <script>
+        window.__APP_CONFIG__ = {
+            API_BASE_URL: "http://172.23.89.211:5005/api/v1",
+            ENVIRONMENT: "development",
+            DEBUG: true
+        };
+    </script>
 
     <!-- UI Scripts -->
     <script src="js/ui.js"></script>
