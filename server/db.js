@@ -54,12 +54,30 @@ db.serialize(() => {
         client_id TEXT NOT NULL,
         check_in DATE NOT NULL,
         check_out DATE NOT NULL,
-        status TEXT DEFAULT 'RESERVED', -- RESERVED, CHECKED_IN, CHECKED_OUT, CANCELLED
-        total_amount REAL NOT NULL,
+        nights INTEGER NOT NULL DEFAULT 1,
+        price_per_night REAL,
+        calculated_base_price REAL,
+        total_amount REAL NOT NULL, -- This is the final_price
+        status TEXT DEFAULT 'PENDING', -- PENDING, CONFIRMED, CANCELLED
+        payment_status TEXT DEFAULT 'UNPAID', -- UNPAID, PAID, ON_HOLD
+        actual_check_in DATETIME,
+        actual_check_out DATETIME,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms(id),
         FOREIGN KEY (client_id) REFERENCES clients(id)
     )`);
+
+    // Ensure columns exist (for existing databases)
+    db.all("PRAGMA table_info(bookings)", (err, rows) => {
+        if (err) return;
+        const columns = rows.map(r => r.name);
+        if (!columns.includes('actual_check_in')) {
+            db.run("ALTER TABLE bookings ADD COLUMN actual_check_in DATETIME");
+        }
+        if (!columns.includes('actual_check_out')) {
+            db.run("ALTER TABLE bookings ADD COLUMN actual_check_out DATETIME");
+        }
+    });
 
     // Indices for performance on date ranges (Phase 6)
     db.run(`CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(check_in, check_out)`);

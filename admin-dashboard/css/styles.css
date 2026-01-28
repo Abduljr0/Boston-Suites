@@ -434,11 +434,13 @@ th {
 }
 
 .status-confirmed,
-.status-active {
+.status-active,
+.status-checked-in {
     background: rgba(38, 207, 75, 0.1);
     color: var(--success-color);
 }
 
+.status-on-hold,
 .status-pending {
     background: rgba(255, 143, 60, 0.1);
     color: var(--warning-color);
@@ -447,6 +449,26 @@ th {
 .status-cancelled {
     background: rgba(255, 0, 3, 0.1);
     color: var(--danger-color);
+}
+
+.status-text-confirmed {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.status-text-checked_in {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+.status-text-pending_payment {
+    color: var(--warning-color);
+    font-weight: bold;
+}
+
+.status-text-checked_out {
+    color: var(--text-color);
+    font-weight: bold;
 }
 
 /* SETTINGS SPECIFIC STYLES */

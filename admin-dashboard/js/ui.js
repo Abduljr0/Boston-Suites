@@ -3,7 +3,7 @@
 // ============================================================================
 // Read API base URL from global config injected in index.html
 // This allows environment-specific configuration without rebuilding JS
-const API_BASE = window.__APP_CONFIG__?.API_BASE_URL || "http://172.23.89.211:5005/api/v1";
+const API_BASE = window.__APP_CONFIG__?.API_BASE_URL || 'http://localhost:5005/api/v1';
 const DEBUG_MODE = window.__APP_CONFIG__?.DEBUG || false;
 
 // Log configuration on load (helps with debugging)
@@ -17,6 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- State Management ---
     let currentRooms = [];
     let editRoomId = null;
+    let editBookingId = null;
+    let allRooms = [];
 
     // --- Initialization ---
     initNavigation();
@@ -25,9 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
     initRevenueModule();
     initAvailabilityModule();
     initBookingModule();
+    initPaymentModule();
 
-    // Initial load for dashboard
+    // Initial load
     loadDashboardStats();
+    fetchAllRooms();
 
     // --- Core Navigation Logic ---
     function initNavigation() {
@@ -57,6 +61,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (targetId === 'view-revenue') loadRevenueFilters();
                     if (targetId === 'view-bookings') loadBookings();
                     if (targetId === 'view-clients') loadClients();
+                    if (targetId === 'view-payment') {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const bId = urlParams.get('bookingId');
+                        if (bId) loadPaymentDetails(bId);
+                    }
+                    if (targetId === 'view-book-room') {
+                        // Regular menu click should always start fresh
+                        editBookingId = null;
+                        const title = document.getElementById('book-room-title');
+                        if (title) title.textContent = "New Booking";
+                        const form = document.getElementById('bookRoomForm');
+                        if (form) {
+                            const inputs = form.querySelectorAll('input, select');
+                            inputs.forEach(input => input.removeAttribute('disabled'));
+                            const submitBtn = form.querySelector('button[type="submit"]');
+                            if (submitBtn) submitBtn.style.display = 'block';
+                            form.reset();
+                        }
+                    }
                 }
 
                 // Mobile sidebar close
@@ -114,17 +137,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('stat-total-rooms').textContent = rooms.length;
 
-            // Derive occupancy (ACTIVE bookings today)
+            // Derive occupancy (Only those actually CHECKED_IN)
+            const occupiedCount = bookings.filter(b => b.status === 'CHECKED_IN').length;
+            document.getElementById('stat-occupied').textContent = occupiedCount;
+            document.getElementById('stat-available').textContent = rooms.length - occupiedCount;
+
             const today = new Date().toISOString().split('T')[0];
-            const activeBookings = bookings.filter(b => b.check_in <= today && b.check_out > today && b.status !== 'CANCELLED');
-            document.getElementById('stat-occupied').textContent = activeBookings.length;
-            document.getElementById('stat-available').textContent = rooms.filter(r => r.status === 'ACTIVE').length - activeBookings.length;
 
-            const checkinsToday = bookings.filter(b => b.check_in === today).length;
-            const checkoutsToday = bookings.filter(b => b.check_out === today).length;
+            // Expected for today (not cancelled)
+            const expectedCheckins = bookings.filter(b => b.check_in === today && b.status !== 'CANCELLED').length;
+            const expectedCheckouts = bookings.filter(b => b.check_out === today && b.status !== 'CANCELLED').length;
 
-            document.getElementById('stat-checkins').textContent = checkinsToday;
-            document.getElementById('stat-checkouts').textContent = checkoutsToday;
+            // Actuals performed today
+            const actualCheckins = bookings.filter(b => b.actual_check_in && b.actual_check_in.startsWith(today)).length;
+            const actualCheckouts = bookings.filter(b => b.actual_check_out && b.actual_check_out.startsWith(today)).length;
+
+            document.getElementById('stat-checkins').textContent = actualCheckins;
+            document.getElementById('stat-checkouts').textContent = actualCheckouts;
 
         } catch (err) {
             console.error("❌ Backend connection failed:", err.message);
@@ -140,6 +169,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+    }
+
+    async function fetchAllRooms() {
+        try {
+            const res = await fetch(`${API_BASE}/rooms`);
+            const json = await res.json();
+            if (json.success) {
+                allRooms = json.data;
+                const select = document.getElementById('booking-room-id');
+                if (select) {
+                    select.innerHTML = '<option value="">Select an available room...</option>';
+                    allRooms.forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r.id;
+                        opt.textContent = `Room ${r.number} - ${r.type} ($${r.price})`;
+                        opt.dataset.price = r.price;
+                        opt.dataset.type = r.type;
+                        select.appendChild(opt);
+                    });
+                }
+            }
+        } catch (err) { console.error("Error fetching rooms:", err); }
     }
 
     // --- Rooms Module ---
@@ -432,45 +483,226 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.btn-book-now').forEach(b => b.addEventListener('click', (e) => {
             const id = e.target.getAttribute('data-id');
             const room = rooms.find(r => r.id === id);
+
+            // Get original search criteria
+            const searchForm = document.getElementById('checkAvailabilityForm');
+            const searchCheckIn = searchForm.querySelector('input[type="date"]').value;
+            const searchNights = searchForm.querySelector('input[type="number"]').value;
+
+            // Reset state
+            editBookingId = null;
+            document.getElementById('book-room-title').textContent = "New Booking";
+
             document.querySelector('.menu-item[data-target="view-book-room"]').click();
+
             const bookForm = document.getElementById('bookRoomForm');
-            bookForm.querySelector('input[readonly]').value = `${room.number} - ${room.type} ($${room.price})`;
-            bookForm.dataset.roomId = room.id;
+            // Ensure fields are enabled (in case previously in 'view' mode)
+            const inputs = bookForm.querySelectorAll('input, select');
+            inputs.forEach(input => input.removeAttribute('disabled'));
+            bookForm.querySelector('button[type="submit"]').style.display = 'block';
+
+            const roomSelect = document.getElementById('booking-room-id');
+            roomSelect.value = id;
+
+            // Populate criteria
+            document.getElementById('booking-check-in').value = searchCheckIn;
+            document.getElementById('booking-nights').value = searchNights;
+
+            // Trigger initial calculation
+            calculateBookingPrice();
         }));
+    }
+
+    function calculateBookingPrice() {
+        const bookForm = document.getElementById('bookRoomForm');
+        const roomSelect = document.getElementById('booking-room-id');
+        const nightsInput = document.getElementById('booking-nights');
+        const totalPriceInput = document.getElementById('booking-total-price');
+        const basePriceDisplay = document.getElementById('booking-base-price-display');
+        const roomInfo = document.getElementById('booking-room-type-info');
+
+        const nights = parseInt(nightsInput.value) || 0;
+        let pricePerNight = 0;
+
+        if (roomSelect.selectedIndex > 0) {
+            const opt = roomSelect.options[roomSelect.selectedIndex];
+            pricePerNight = parseFloat(opt.dataset.price) || 0;
+            if (roomInfo) roomInfo.textContent = `Type: ${opt.dataset.type} room selected.`;
+        } else if (roomInfo) {
+            roomInfo.textContent = '';
+        }
+
+        const calculatedBasePrice = nights * pricePerNight;
+        totalPriceInput.value = calculatedBasePrice.toFixed(2);
+
+        if (basePriceDisplay) {
+            basePriceDisplay.textContent = `Base: $${calculatedBasePrice.toFixed(2)}`;
+            basePriceDisplay.style.display = nights > 0 ? 'inline' : 'none';
+        }
+
+        if (DEBUG_MODE) {
+            console.log("💰 Price Calculated:", { nights, pricePerNight, calculatedBasePrice });
+        }
     }
 
     // --- Bookings Module ---
     function initBookingModule() {
         const form = document.getElementById('bookRoomForm');
+        const nightsInput = document.getElementById('booking-nights');
+        const totalPriceInput = document.getElementById('booking-total-price');
+
+        // Real-time calculation on nights or room change
+        nightsInput?.addEventListener('input', () => calculateBookingPrice());
+        document.getElementById('booking-room-id')?.addEventListener('change', () => calculateBookingPrice());
+
         form?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const roomId = form.dataset.roomId;
-            if (!roomId) return alert('Please select a room first');
+            const roomSelect = document.getElementById('booking-room-id');
+            const roomId = roomSelect.value;
+
+            if (!roomId) return alert('Please select a room');
+
+            const nights = parseInt(nightsInput.value);
+            const finalPrice = parseFloat(totalPriceInput.value);
+
+            const selectedOpt = roomSelect.options[roomSelect.selectedIndex];
+            const pricePerNight = parseFloat(selectedOpt.dataset.price) || 0;
+            const basePrice = pricePerNight * nights;
 
             const payload = {
                 room_id: roomId,
-                client_name: form.querySelector('input[placeholder="Full Name"]').value,
-                phone: form.querySelector('input[type="tel"]').value,
-                check_in: form.querySelector('input[type="date"]').value,
-                nights: parseInt(form.querySelector('input[type="number"]').value)
+                guest_name: document.getElementById('booking-client-name').value,
+                guest_phone: document.getElementById('booking-phone').value,
+                check_in_date: document.getElementById('booking-check-in').value,
+                nights: nights,
+                price_per_night: pricePerNight,
+                calculated_base_price: basePrice,
+                final_price: finalPrice,
+                booking_status: "pending_payment"
             };
 
+            const url = editBookingId ? `${API_BASE}/bookings/${editBookingId}` : `${API_BASE}/bookings`;
+            const method = editBookingId ? 'PUT' : 'POST';
+
             try {
-                const res = await fetch(`${API_BASE}/bookings`, {
-                    method: 'POST',
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
+                const json = await res.json();
+
+                if (res.ok) {
+                    const bookingId = editBookingId || json.data.booking_id;
+                    alert(editBookingId ? 'Booking updated!' : 'Booking created!');
+
+                    // Navigate to payment
+                    const newUrl = `${window.location.pathname}?view=payment&bookingId=${bookingId}`;
+                    window.history.pushState({ path: newUrl }, '', newUrl);
+
+                    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                    document.getElementById('view-payment').classList.add('active');
+                    loadPaymentDetails(bookingId);
+
+                    form.reset();
+                    editBookingId = null;
+                } else {
+                    alert('Error: ' + (json.error || 'Operation failed'));
+                }
+            } catch (err) {
+                console.error("Booking Error:", err);
+                alert("Failed to connect to server.");
+            }
+        });
+    }
+
+    // --- Payment Module ---
+    function initPaymentModule() {
+        const btnProcess = document.getElementById('btn-process-payment');
+        const btnHold = document.getElementById('btn-hold-payment');
+
+        btnProcess?.addEventListener('click', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('bookingId');
+            if (!bookingId) return alert("No booking ID found");
+
+            try {
+                const res = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_status: 'PAID' })
+                });
                 const json = await res.json();
                 if (json.success) {
-                    alert('Booking Confirmed!');
-                    form.reset();
-                    delete form.dataset.roomId;
+                    alert('Booking Confirmed and Paid!');
+                    loadPaymentDetails(bookingId);
                 } else {
                     alert('Error: ' + json.error);
                 }
             } catch (err) { console.error(err); }
         });
+
+        btnHold?.addEventListener('click', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('bookingId');
+            if (!bookingId) return alert("No booking ID found");
+
+            try {
+                const res = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ payment_status: 'on_hold' })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    alert('Payment deferred. Returning to bookings list.');
+                    document.querySelector('.menu-item[data-target="view-bookings"]').click();
+                } else {
+                    alert('Error: ' + json.error);
+                }
+            } catch (err) { console.error(err); }
+        });
+    }
+
+    async function loadPaymentDetails(bookingId) {
+        const summaryContent = document.getElementById('payment-summary-content');
+        const statusBadge = document.getElementById('payment-current-status');
+
+        try {
+            const res = await fetch(`${API_BASE}/bookings/${bookingId}`);
+            const json = await res.json();
+
+            if (json.success) {
+                const b = json.data;
+
+                // Update Badge
+                statusBadge.textContent = b.payment_status || 'UNPAID';
+                statusBadge.className = 'status-badge ' +
+                    (b.payment_status === 'PAID' ? 'status-active' :
+                        b.payment_status === 'on_hold' ? 'status-inactive' : 'status-danger');
+
+                // Render Summary
+                summaryContent.innerHTML = `
+                    <div style="line-height: 1.8;">
+                        <p><strong>Booking ID:</strong> <span style="font-family: monospace;">#BK-${b.id.substring(0, 8)}</span></p>
+                        <p><strong>Guest:</strong> ${b.first_name} ${b.last_name}</p>
+                        <p><strong>Phone:</strong> ${b.phone}</p>
+                        <hr style="margin: 0.5rem 0; border: 0; border-top: 1px dashed #eee;">
+                        <p><strong>Room:</strong> ${b.room_number} (${b.room_name || b.room_type})</p>
+                        <p><strong>Rate:</strong> $${b.price_per_night?.toFixed(2)} / night</p>
+                        <p><strong>Stay:</strong> ${b.check_in} to ${b.check_out} (${b.nights} nights)</p>
+                        <hr style="margin: 0.5rem 0; border: 0; border-top: 1px dashed #eee;">
+                        <p style="font-size: 1.2rem; color: var(--primary-color);"><strong>Total Amount: $${b.total_amount.toFixed(2)}</strong></p>
+                    </div>
+                `;
+            } else {
+                summaryContent.innerHTML = `<p style="color: red;">Error: ${json.error}</p>`;
+            }
+        } catch (err) {
+            console.error(err);
+            summaryContent.innerHTML = `<p style="color: red;">Failed to load booking details.</p>`;
+        }
     }
 
     async function loadBookings() {
@@ -491,21 +723,146 @@ document.addEventListener('DOMContentLoaded', () => {
 
             json.data.forEach(bk => {
                 const tr = document.createElement('tr');
+                const isPending = bk.status === 'PENDING_PAYMENT' || bk.payment_status !== 'PAID';
+
                 tr.innerHTML = `
                     <td>#BK-${bk.id.substring(0, 8)}</td>
                     <td>${bk.first_name} ${bk.last_name}</td>
                     <td>${bk.room_number} (${bk.room_name || bk.room_type || ''})</td>
                     <td>${bk.check_in}</td>
                     <td>${bk.check_out}</td>
-                    <td><span class="status-badge status-active">${bk.status}</span></td>
-                    <td><button class="btn btn-outline"><i class="fas fa-eye"></i></button></td>
+                    <td>
+                        <span class="status-badge ${bk.payment_status === 'PAID' ? 'status-active' : bk.payment_status === 'on_hold' ? 'status-on-hold' : 'status-danger'}">
+                            ${bk.payment_status || 'UNPAID'}
+                        </span>
+                        <br>
+                        <small class="status-text-${bk.status.toLowerCase()}" style="font-size: 0.7rem;">${bk.status.replace('_', ' ')}</small>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-outline btn-view-booking" data-id="${bk.id}" title="View Details"><i class="fas fa-eye"></i></button>
+                            ${isPending ? `
+                                <button class="btn btn-outline btn-edit-booking" data-id="${bk.id}" title="Edit Booking" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-primary btn-pay-now" data-id="${bk.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem;">Pay Now</button>
+                            ` : ''}
+                            ${bk.status === 'CONFIRMED' ? `
+                                <button class="btn btn-primary btn-check-in" data-id="${bk.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background-color: #27ae60; border-color: #27ae60;">Check-in</button>
+                            ` : ''}
+                            ${bk.status === 'CHECKED_IN' ? `
+                                <button class="btn btn-primary btn-check-out" data-id="${bk.id}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background-color: #e67e22; border-color: #e67e22;">Check-out</button>
+                            ` : ''}
+                        </div>
+                    </td>
                 `;
                 tbody.appendChild(tr);
+            });
+
+            // Handlers for dynamic buttons
+            document.querySelectorAll('.btn-pay-now').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const newUrl = `${window.location.pathname}?view=payment&bookingId=${id}`;
+                    window.history.pushState({ path: newUrl }, '', newUrl);
+
+                    document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                    document.getElementById('view-payment').classList.add('active');
+                    document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+
+                    loadPaymentDetails(id);
+                });
+            });
+
+            document.querySelectorAll('.btn-edit-booking').forEach(btn => {
+                btn.addEventListener('click', (e) => openBookingForm(e.currentTarget.getAttribute('data-id'), 'edit'));
+            });
+
+            document.querySelectorAll('.btn-view-booking').forEach(btn => {
+                btn.addEventListener('click', (e) => openBookingForm(e.currentTarget.getAttribute('data-id'), 'view'));
+            });
+
+            document.querySelectorAll('.btn-check-in').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (confirm("Are you sure you want to Check-in this guest?")) {
+                        try {
+                            const res = await fetch(`${API_BASE}/bookings/${id}/check-in`, { method: 'PATCH' });
+                            const json = await res.json();
+                            if (json.success) {
+                                alert("Guest checked in successfully!");
+                                loadBookings();
+                                loadDashboardStats(); // Update occupancy counts
+                            } else {
+                                alert("Error: " + json.error);
+                            }
+                        } catch (err) { console.error(err); }
+                    }
+                });
+            });
+
+            document.querySelectorAll('.btn-check-out').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (confirm("Process Check-out for this guest?")) {
+                        try {
+                            const res = await fetch(`${API_BASE}/bookings/${id}/check-out`, { method: 'PATCH' });
+                            const json = await res.json();
+                            if (json.success) {
+                                alert("Guest checked out successfully!");
+                                loadBookings();
+                                loadDashboardStats(); // Update occupancy counts
+                            } else {
+                                alert("Error: " + json.error);
+                            }
+                        } catch (err) { console.error(err); }
+                    }
+                });
             });
         } catch (err) {
             console.error(err);
             renderEmptyState('bookingsTableBody', 'bookingsEmptyState', 'Backend not connected');
         }
+    }
+
+    async function openBookingForm(bookingId, mode = 'edit') {
+        try {
+            const res = await fetch(`${API_BASE}/bookings/${bookingId}`);
+            const json = await res.json();
+            if (json.success) {
+                const b = json.data;
+                editBookingId = bookingId;
+
+                const title = document.getElementById('book-room-title');
+                const form = document.getElementById('bookRoomForm');
+                const submitBtn = form.querySelector('button[type="submit"]');
+
+                title.textContent = mode === 'view' ? "View Booking Details" : "Edit Booking";
+
+                // Toggle Read-only state
+                const inputs = form.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    if (mode === 'view') input.setAttribute('disabled', 'true');
+                    else input.removeAttribute('disabled');
+                });
+
+                if (mode === 'view') submitBtn.style.display = 'none';
+                else submitBtn.style.display = 'block';
+
+                // Navigation UI
+                document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+                document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-book-room').classList.add('active');
+
+                // Populate Form
+                document.getElementById('booking-room-id').value = b.room_id;
+                document.getElementById('booking-client-name').value = `${b.first_name} ${b.last_name}`;
+                document.getElementById('booking-phone').value = b.phone;
+                document.getElementById('booking-check-in').value = b.check_in;
+                document.getElementById('booking-nights').value = b.nights;
+
+                calculateBookingPrice(); // Updates base and room info
+                document.getElementById('booking-total-price').value = b.total_amount.toFixed(2);
+            }
+        } catch (err) { console.error(err); }
     }
 
     // --- Clients Module ---

@@ -58,7 +58,7 @@ ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1
 **Step 2: Update Frontend (`index.html`):**
 ```javascript
 window.__APP_CONFIG__ = {
-    API_BASE_URL: "http://172.23.89.211:5005/api/v1",  // ← Use WSL IP
+    API_BASE_URL: "http://localhost:5005/api/v1",  // ← Use WSL IP
     ENVIRONMENT: "development",
     DEBUG: true
 };
@@ -70,7 +70,7 @@ Backend automatically binds to `0.0.0.0:5005` (all interfaces)
 **Step 4: Test Connection**
 ```bash
 # From Windows PowerShell
-curl http://172.23.89.211:5005/api/v1/health
+curl http://localhost:5005/api/v1/health
 ```
 
 ---

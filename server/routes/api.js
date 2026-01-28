@@ -155,19 +155,115 @@ router.post('/availability/check', (req, res) => {
 // MODULE 3: Booking Management
 // -----------------------------------------------------------------------------
 
-router.post('/bookings', (req, res) => {
-    const { room_id, client, check_in, nights } = req.body;
+router.put('/bookings/:id', (req, res) => {
+    const { id } = req.params;
+    const {
+        room_id,
+        guest_name,
+        guest_phone,
+        check_in_date,
+        nights,
+        price_per_night,
+        calculated_base_price,
+        final_price
+    } = req.body;
 
-    if (!room_id || !client || !check_in || !nights) {
+    if (!room_id || !guest_name || !guest_phone || !check_in_date || !nights) {
         return res.status(400).json({ success: false, error: "Missing required fields" });
     }
 
-    const checkInDate = new Date(check_in);
+    db.serialize(() => {
+        // 1. Verify booking exists and is editable
+        db.get("SELECT status, client_id FROM bookings WHERE id = ?", [id], (err, currentBooking) => {
+            if (err || !currentBooking) return res.status(404).json({ success: false, error: "Booking not found" });
+
+            if (currentBooking.status !== 'PENDING_PAYMENT') {
+                return res.status(400).json({ success: false, error: "Only PENDING_PAYMENT bookings can be edited" });
+            }
+
+            const checkInDate = new Date(check_in_date);
+            const checkOutDate = new Date(checkInDate);
+            checkOutDate.setDate(checkOutDate.getDate() + parseInt(nights));
+            const fmtCheckIn = checkInDate.toISOString().split('T')[0];
+            const fmtCheckOut = checkOutDate.toISOString().split('T')[0];
+
+            // 2. Revalidate availability (excluding THIS booking ID)
+            const conflictSql = `
+                SELECT count(*) as conflict 
+                FROM bookings 
+                WHERE room_id = ? 
+                AND id != ? 
+                AND status NOT IN ('CANCELLED')
+                AND (DATE(?) < check_out AND DATE(?) > check_in)
+            `;
+
+            db.get(conflictSql, [room_id, id, fmtCheckIn, fmtCheckOut], (err, row) => {
+                if (err) return res.status(500).json({ success: false, error: err.message });
+                if (row.conflict > 0) {
+                    return res.status(409).json({ success: false, error: "Room is not available for the selected dates" });
+                }
+
+                // 3. Update Client Info
+                const nameParts = guest_name.trim().split(/\s+/);
+                const firstName = nameParts[0];
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Guest';
+
+                db.run("UPDATE clients SET first_name = ?, last_name = ?, phone = ? WHERE id = ?",
+                    [firstName, lastName, guest_phone, currentBooking.client_id], (err) => {
+                        if (err) return res.status(500).json({ success: false, error: "Failed to update guest info" });
+
+                        // 4. Update Booking Info
+                        const sql = `UPDATE bookings SET 
+                            room_id = ?, check_in = ?, check_out = ?, nights = ?, 
+                            price_per_night = ?, calculated_base_price = ?, total_amount = ?
+                            WHERE id = ?`;
+
+                        db.run(sql, [
+                            room_id, fmtCheckIn, fmtCheckOut, nights,
+                            price_per_night, calculated_base_price, final_price,
+                            id
+                        ], (err) => {
+                            if (err) return res.status(500).json({ success: false, error: err.message });
+                            res.json({ success: true, message: "Booking updated successfully" });
+                        });
+                    });
+            });
+        });
+    });
+});
+
+router.post('/bookings', (req, res) => {
+    const {
+        room_id,
+        guest_name,
+        guest_phone,
+        check_in_date,
+        nights,
+        price_per_night,
+        calculated_base_price,
+        final_price,
+        booking_status
+    } = req.body;
+
+    if (!room_id || !guest_name || !guest_phone || !check_in_date || !nights) {
+        return res.status(400).json({
+            success: false,
+            error: "Missing required fields",
+            received: req.body
+        });
+    }
+
+    const checkInDate = new Date(check_in_date);
     const checkOutDate = new Date(checkInDate);
     checkOutDate.setDate(checkOutDate.getDate() + parseInt(nights));
 
     const fmtCheckIn = checkInDate.toISOString().split('T')[0];
     const fmtCheckOut = checkOutDate.toISOString().split('T')[0];
+
+    // Split guest_name into first/last for the clients table
+    const nameParts = guest_name.trim().split(/\s+/);
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Guest';
 
     db.serialize(() => {
         // Double check availability
@@ -177,28 +273,120 @@ router.post('/bookings', (req, res) => {
                 if (row.conflict > 0) return res.status(409).json({ success: false, error: "Room is no longer available" });
 
                 // Handle Client
-                db.get("SELECT id FROM clients WHERE phone = ?", [client.phone], (err, crow) => {
+                db.get("SELECT id FROM clients WHERE phone = ?", [guest_phone], (err, crow) => {
                     const clientId = crow ? crow.id : uuidv4();
                     if (!crow) {
-                        db.run("INSERT INTO clients (id, first_name, last_name, email, phone) VALUES (?, ?, ?, ?, ?)",
-                            [clientId, client.first_name, client.last_name, client.email, client.phone]);
+                        db.run("INSERT INTO clients (id, first_name, last_name, phone) VALUES (?, ?, ?, ?)",
+                            [clientId, firstName, lastName, guest_phone]);
                     }
 
-                    // Get Room Price
-                    db.get("SELECT price FROM rooms WHERE id = ?", [room_id], (err, rrow) => {
-                        if (err || !rrow) return res.status(500).json({ success: false, error: "Room error" });
+                    const bookingId = uuidv4();
+                    const status = (booking_status || 'PENDING_PAYMENT').toUpperCase();
 
-                        const totalAmount = rrow.price * nights;
-                        const bookingId = uuidv4();
-
-                        db.run(`INSERT INTO bookings (id, room_id, client_id, check_in, check_out, total_amount, status) VALUES (?, ?, ?, ?, ?, ?, 'CONFIRMED')`,
-                            [bookingId, room_id, clientId, fmtCheckIn, fmtCheckOut, totalAmount], (err) => {
-                                if (err) return res.status(500).json({ success: false, error: err.message });
-                                res.status(201).json({ success: true, data: { booking_id: bookingId, total_amount: totalAmount } });
+                    db.run(`INSERT INTO bookings (
+                        id, room_id, client_id, check_in, check_out, 
+                        nights, price_per_night, calculated_base_price, 
+                        total_amount, status, payment_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'UNPAID')`,
+                        [
+                            bookingId, room_id, clientId, fmtCheckIn, fmtCheckOut,
+                            nights, price_per_night, calculated_base_price,
+                            final_price, status
+                        ], (err) => {
+                            if (err) return res.status(500).json({ success: false, error: err.message });
+                            res.status(201).json({
+                                success: true,
+                                data: {
+                                    booking_id: bookingId,
+                                    total_amount: final_price,
+                                    status: status
+                                }
                             });
-                    });
+                        });
                 });
             });
+    });
+});
+
+router.patch('/bookings/:id/check-in', (req, res) => {
+    const { id } = req.params;
+    const now = new Date().toISOString();
+
+    db.get("SELECT status FROM bookings WHERE id = ?", [id], (err, row) => {
+        if (err || !row) return res.status(404).json({ success: false, error: "Booking not found" });
+
+        if (row.status !== 'CONFIRMED') {
+            return res.status(400).json({ success: false, error: "Only CONFIRMED bookings can be checked in. Current status: " + row.status });
+        }
+
+        const sql = "UPDATE bookings SET status = 'CHECKED_IN', actual_check_in = ? WHERE id = ?";
+        db.run(sql, [now, id], function (err) {
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            res.json({ success: true, message: "Checked in successfully", checked_in_at: now });
+        });
+    });
+});
+
+router.patch('/bookings/:id/check-out', (req, res) => {
+    const { id } = req.params;
+    const now = new Date().toISOString();
+
+    db.get("SELECT status FROM bookings WHERE id = ?", [id], (err, row) => {
+        if (err || !row) return res.status(404).json({ success: false, error: "Booking not found" });
+
+        if (row.status !== 'CHECKED_IN') {
+            return res.status(400).json({ success: false, error: "Only CHECKED_IN bookings can be checked out. Current status: " + row.status });
+        }
+
+        const sql = "UPDATE bookings SET status = 'CHECKED_OUT', actual_check_out = ? WHERE id = ?";
+        db.run(sql, [now, id], function (err) {
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            res.json({ success: true, message: "Checked out successfully", checked_out_at: now });
+        });
+    });
+});
+
+router.patch('/bookings/:id/payment-status', (req, res) => {
+    const { payment_status } = req.body;
+    const { id } = req.params;
+
+    if (!payment_status) {
+        return res.status(400).json({ success: false, error: "Missing payment_status" });
+    }
+
+    let bookingStatusUpdate = "";
+    if (payment_status === 'PAID') {
+        bookingStatusUpdate = ", status = 'CONFIRMED'";
+    } else if (payment_status === 'on_hold') {
+        bookingStatusUpdate = ", status = 'PENDING_PAYMENT'";
+    }
+
+    const sql = `UPDATE bookings SET payment_status = ? ${bookingStatusUpdate} WHERE id = ?`;
+    db.run(sql, [payment_status, id], function (err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (this.changes === 0) return res.status(404).json({ success: false, error: "Booking not found" });
+        res.json({
+            success: true,
+            message: `Payment status updated to ${payment_status}`,
+            new_booking_status: payment_status === 'PAID' ? 'CONFIRMED' : 'PENDING_PAYMENT'
+        });
+    });
+});
+
+router.get('/bookings/:id', (req, res) => {
+    const { id } = req.params;
+    const sql = `
+        SELECT b.*, r.number as room_number, r.name as room_name, r.type as room_type,
+               c.first_name, c.last_name, c.phone 
+        FROM bookings b
+        JOIN rooms r ON b.room_id = r.id
+        JOIN clients c ON b.client_id = c.id
+        WHERE b.id = ?
+    `;
+    db.get(sql, [id], (err, row) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (!row) return res.status(404).json({ success: false, error: "Booking not found" });
+        res.json({ success: true, data: row });
     });
 });
 
