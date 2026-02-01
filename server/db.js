@@ -67,6 +67,16 @@ db.serialize(() => {
         FOREIGN KEY (client_id) REFERENCES clients(id)
     )`);
 
+    // 5. Users (Staff/Admin)
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        full_name TEXT,
+        role TEXT DEFAULT 'staff', -- admin, staff
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // Ensure columns exist (for existing databases)
     db.all("PRAGMA table_info(bookings)", (err, rows) => {
         if (err) return;
@@ -85,7 +95,7 @@ db.serialize(() => {
 
     // Seed Data (if empty)
     db.get("SELECT count(*) as count FROM room_types", (err, row) => {
-        if (row.count === 0) {
+        if (row && row.count === 0) {
             console.log("Seeding Database...");
             const stmt = db.prepare("INSERT INTO room_types VALUES (?, ?, ?, ?, ?, ?)");
             stmt.run("rt_luxury", "Luxury Suite", 250.00, 2, 1, JSON.stringify(["Ocean View", "King Bed"]));
@@ -104,6 +114,16 @@ db.serialize(() => {
             roomStmt.run(uuidv4(), "301", "Solo Traveler", "Single", 1, 90.00, "Perfect for business trips", "ACTIVE");
             roomStmt.run(uuidv4(), "302", "Economy Single", "Single", 1, 75.00, "Budget friendly option", "ACTIVE");
             roomStmt.finalize();
+        }
+    });
+
+    // Seed Admin User
+    db.get("SELECT count(*) as count FROM users", (err, row) => {
+        if (row && row.count === 0) {
+            console.log("Seeding Admin User...");
+            const adminId = uuidv4();
+            db.run("INSERT INTO users (id, username, password, full_name, role) VALUES (?, ?, ?, ?, ?)",
+                [adminId, 'admin', 'admin123', 'System Administrator', 'admin']);
         }
     });
 });

@@ -6,6 +6,41 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// -----------------------------------------------------------------------------
+// MODULE 0: Authentication
+// -----------------------------------------------------------------------------
+
+router.post('/auth/login', (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ success: false, error: "Username and password are required" });
+    }
+
+    db.get("SELECT * FROM users WHERE username = ?", [username], (err, user) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+
+        if (!user || user.password !== password) {
+            return res.status(401).json({ success: false, error: "Invalid username or password" });
+        }
+
+        // In a real app, generate a JWT here. For this MVP, we'll return user info as "token"
+        // and handle the rest in the frontend.
+        res.json({
+            success: true,
+            data: {
+                token: 'mock-jwt-token-' + user.id,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    full_name: user.full_name,
+                    role: user.role
+                }
+            }
+        });
+    });
+});
+
 // Configure multer for image uploads
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {

@@ -1,54 +1,70 @@
 :root {
-    /* Colors from main theme */
-    --primary-color: #AB8A62;
-    --secondary-color: #1b1b1b;
-    --text-color: #65676B;
-    --bg-color: #F1F1F1;
+    /* Updated Theme Colors: Blue & White (Light) */
+    --primary-color: #1a4a7a;
+    /* Boston Blue */
+    --secondary-color: #111827;
+    /* Dark Navy for text */
+    --text-color: #4b5563;
+    /* Grayish text */
+    --bg-color: #f1f5f9;
+    /* Light Blue-Gray background */
     --white: #FFFFFF;
-    --border-color: rgba(125, 128, 135, 0.3);
-    --success-color: #26CF4B;
-    --warning-color: #FF8F3C;
-    --danger-color: #FF0003;
+    --sidebar-bg: #ffffff;
+    --sidebar-text: #4b5563;
+    --sidebar-border: #e5e7eb;
+    --border-color: #e5e7eb;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
 
     /* Admin specific */
     --sidebar-width: 260px;
     --sidebar-narrow-width: 70px;
     --header-height: 70px;
-    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
     /* Typography */
     --font-heading: "Gilda Display", serif;
     --font-body: "Jost", sans-serif;
 }
 
-/* Dark Theme Overrides */
+/* Dark Theme Overrides: Blue & Black */
 .theme-dark {
-    --secondary-color: #E0E0E0;
-    --text-color: #B0B0B0;
-    --bg-color: #121212;
-    --white: #1E1E1E;
-    --border-color: rgba(255, 255, 255, 0.1);
-    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --primary-color: #3498db;
+    /* Brighter blue for dark mode */
+    --secondary-color: #f3f4f6;
+    /* Light text on dark bg */
+    --text-color: #9ca3af;
+    /* Dimmer text */
+    --bg-color: #0a0c10;
+    /* True Black/Deep Navy */
+    --white: #161b22;
+    /* Card background */
+    --sidebar-bg: #0d1117;
+    /* Sidebar background */
+    --sidebar-text: #8b949e;
+    --sidebar-border: #30363d;
+    --border-color: #30363d;
+    --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .theme-dark body {
-    background-color: #121212;
+    background-color: var(--bg-color);
     color: var(--text-color);
 }
 
 .theme-dark .sidebar {
-    background: #111;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
 }
 
 .theme-dark .top-bar {
     background: var(--white);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .theme-dark .form-control {
-    background-color: #2D2D2D;
-    /* Slightly lighter than card */
+    background-color: #0d1117;
     border-color: var(--border-color);
     color: var(--secondary-color);
 }
@@ -62,6 +78,11 @@
     background-color: rgba(255, 255, 255, 0.05);
 }
 
+.theme-dark th {
+    background: #0d1117;
+    color: var(--secondary-color);
+}
+
 /* ... rest of the CSS ... */
 
 * {
@@ -73,8 +94,7 @@
 body {
     font-family: var(--font-body);
     color: var(--text-color);
-    background-color: #f5f6f8;
-    /* Needs to track var change for full dark mode correct? No, body style above handles it for .theme-dark body */
+    background-color: var(--bg-color);
     height: 100vh;
     overflow: hidden;
     transition: background-color 0.3s, color 0.3s;
@@ -105,11 +125,12 @@ a {
 /* Sidebar */
 .sidebar {
     width: var(--sidebar-width);
-    background: var(--secondary-color);
-    color: #fff;
+    background: var(--sidebar-bg);
+    color: var(--sidebar-text);
     display: flex;
     flex-direction: column;
     transition: width 0.3s;
+    border-right: 1px solid var(--sidebar-border);
 }
 
 .sidebar-header {
@@ -117,7 +138,7 @@ a {
     display: flex;
     align-items: center;
     padding: 0 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--sidebar-border);
 }
 
 .brand-name {
@@ -136,14 +157,14 @@ a {
     display: flex;
     align-items: center;
     padding: 0.8rem 1.5rem;
-    color: rgba(255, 255, 255, 0.7);
+    color: var(--sidebar-text);
     transition: all 0.2s;
     cursor: pointer;
 }
 
 .menu-item:hover,
 .menu-item.active {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(26, 74, 122, 0.05);
     color: var(--primary-color);
     border-left: 3px solid var(--primary-color);
 }
@@ -155,7 +176,7 @@ a {
 
 .sidebar-footer {
     padding: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid var(--sidebar-border);
 }
 
 /* Main Content */
@@ -321,7 +342,7 @@ a {
     width: 50px;
     height: 50px;
     border-radius: 12px;
-    background: rgba(171, 138, 98, 0.1);
+    background: rgba(26, 74, 122, 0.1);
     color: var(--primary-color);
     display: flex;
     align-items: center;
@@ -384,7 +405,7 @@ a {
 }
 
 .btn-primary:hover {
-    background: #967d5c;
+    background: #153c63;
 }
 
 .btn-outline {
@@ -551,7 +572,7 @@ th {
 
 .theme-option.active {
     border-color: var(--primary-color);
-    background: rgba(171, 138, 98, 0.1);
+    background: rgba(26, 74, 122, 0.1);
 }
 
 .theme-option span {

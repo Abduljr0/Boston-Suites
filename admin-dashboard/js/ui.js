@@ -106,9 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 lightBtn?.classList.add('active');
                 darkBtn?.classList.remove('active');
             }
-            localStorage.setItem('admin-theme', theme);
+            localStorage.setItem('boston-suites-theme', theme);
         };
-        const savedTheme = localStorage.getItem('admin-theme') || 'light';
+        const savedTheme = localStorage.getItem('boston-suites-theme') || 'light';
         window.setTheme(savedTheme);
     }
 
