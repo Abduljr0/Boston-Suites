@@ -619,28 +619,132 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Payment Module ---
     function initPaymentModule() {
-        const btnProcess = document.getElementById('btn-process-payment');
+        const paymentForm = document.getElementById('payment-initiation-form');
+        const paymentTabs = document.querySelectorAll('.payment-tab-modern');
         const btnHold = document.getElementById('btn-hold-payment');
 
-        btnProcess?.addEventListener('click', async () => {
+        // Tab Switching Logic
+        paymentTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const method = tab.dataset.method;
+
+                // Update tab UI
+                paymentTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Toggle fields
+                document.getElementById('method-fields-mpesa').style.display = method === 'mpesa' ? 'block' : 'none';
+                document.getElementById('method-fields-card').style.display = method === 'card' ? 'block' : 'none';
+
+                // Update button label
+                document.getElementById('payment-method-label').textContent = method === 'mpesa' ? 'M-Pesa STK' : 'Card';
+
+                // Toggle required fields
+                const phoneInput = document.getElementById('payment-phone-mpesa');
+                const cardInputs = [
+                    document.getElementById('payment-card-number'),
+                    document.getElementById('payment-card-expiry'),
+                    document.getElementById('payment-card-cvv'),
+                    document.getElementById('payment-card-name')
+                ];
+
+                if (method === 'mpesa') {
+                    phoneInput.setAttribute('required', 'required');
+                    cardInputs.forEach(input => input?.removeAttribute('required'));
+                } else {
+                    phoneInput.removeAttribute('required');
+                    cardInputs.forEach(input => input?.setAttribute('required', 'required'));
+                }
+            });
+        });
+
+        // Form Submission logic
+        paymentForm?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Prevent multiple submissions
+            const activeFormBtn = paymentForm.querySelector('button[type="submit"]:not([style*="display: none"])');
+            if (activeFormBtn) activeFormBtn.disabled = true;
+
             const urlParams = new URLSearchParams(window.location.search);
             const bookingId = urlParams.get('bookingId');
-            if (!bookingId) return alert("No booking ID found");
+            if (!bookingId) {
+                if (activeFormBtn) activeFormBtn.disabled = false;
+                return alert("Missing Booking ID");
+            }
+
+            // Show Processing View
+            const mainView = document.getElementById('payment-main-view');
+            const processingView = document.getElementById('payment-processing-view');
+            const successView = document.getElementById('payment-success-view');
+
+            mainView.style.display = 'none';
+            processingView.style.display = 'block';
+
+            // Check active method
+            const isMpesa = document.querySelector('.payment-tab-modern[data-method="mpesa"]').classList.contains('active');
 
             try {
-                const res = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ payment_status: 'PAID' })
-                });
-                const json = await res.json();
-                if (json.success) {
-                    alert('Booking Confirmed and Paid!');
-                    loadPaymentDetails(bookingId);
+                if (isMpesa) {
+                    const phoneInput = document.getElementById('payment-phone-mpesa').value;
+                    const bookingAmount = document.getElementById('payment-summary-content').dataset.amount;
+
+                    const stkRes = await fetch(`${API_BASE}/mpesa/stkpush`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: phoneInput,
+                            amount: bookingAmount || 1, // Fallback if missing
+                            accountReference: `BK-${bookingId.substring(0,8)}`,
+                            transactionDesc: 'Boston Suites Booking'
+                        })
+                    });
+
+                    const stkData = await stkRes.json();
+                    
+                    if (stkData.success) {
+                        alert('M-Pesa STK Push Sent successfully! Please check your phone.');
+                        
+                        // For testing we mock a standard processing update to "PAID"
+                        const updateRes = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ payment_status: 'PAID' })
+                        });
+                        if (updateRes.ok) {
+                            loadPaymentDetails(bookingId);
+                            processingView.style.display = 'none';
+                            successView.style.display = 'block';
+                        }
+                    } else {
+                        throw new Error(stkData.error?.errorMessage || stkData.error || "M-Pesa push failed");
+                    }
                 } else {
-                    alert('Error: ' + json.error);
+                    // Card simulated delay
+                    await new Promise(resolve => setTimeout(resolve, 2500));
+
+                    const updateRes = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payment_status: 'PAID' })
+                    });
+
+                    const updateJson = await updateRes.json();
+                    if (updateJson.success) {
+                        loadPaymentDetails(bookingId); // Refresh details
+                        processingView.style.display = 'none';
+                        successView.style.display = 'block';
+                    } else {
+                        throw new Error(updateJson.error || "Update failed");
+                    }
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error("Payment Error:", err);
+                alert("Failed to process payment: " + err.message);
+                processingView.style.display = 'none';
+                mainView.style.display = 'block';
+                if (activeFormBtn) activeFormBtn.disabled = false;
+            }
         });
 
         btnHold?.addEventListener('click', async () => {
@@ -668,6 +772,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadPaymentDetails(bookingId) {
         const summaryContent = document.getElementById('payment-summary-content');
         const statusBadge = document.getElementById('payment-current-status');
+        const statusMsg = document.getElementById('payment-status-message');
+
+        // Reset Views
+        const mainView = document.getElementById('payment-main-view');
+        const processingView = document.getElementById('payment-processing-view');
+        const successView = document.getElementById('payment-success-view');
+
+        if (mainView) mainView.style.display = 'block';
+        if (processingView) processingView.style.display = 'none';
+        if (successView) successView.style.display = 'none';
+
+        // Reset any previous status message
+        if (statusMsg) {
+            statusMsg.style.display = 'none';
+            statusMsg.className = '';
+        }
 
         try {
             const res = await fetch(`${API_BASE}/bookings/${bookingId}`);
@@ -677,12 +797,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 const b = json.data;
 
                 // Update Badge
-                statusBadge.textContent = b.payment_status || 'UNPAID';
-                statusBadge.className = 'status-badge ' +
-                    (b.payment_status === 'PAID' ? 'status-active' :
-                        b.payment_status === 'on_hold' ? 'status-inactive' : 'status-danger');
+                if (statusBadge) {
+                    statusBadge.textContent = b.payment_status || 'UNPAID';
+                    statusBadge.className = 'status-badge ' +
+                        (b.payment_status === 'PAID' ? 'status-active' :
+                            b.payment_status === 'on_hold' ? 'status-on-hold' : 'status-danger');
+                }
+
+                // Pre-fill phone if available
+                const phoneInput = document.getElementById('payment-phone-mpesa');
+                if (phoneInput && b.phone) {
+                    phoneInput.value = b.phone;
+                }
 
                 // Render Summary
+                summaryContent.dataset.amount = b.total_amount;
                 summaryContent.innerHTML = `
                     <div style="line-height: 1.8;">
                         <p><strong>Booking ID:</strong> <span style="font-family: monospace;">#BK-${b.id.substring(0, 8)}</span></p>

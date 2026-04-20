@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const apiRoutes = require('./routes/api');
+const mpesaRoutes = require('./routes/mpesa');
 
 const app = express();
 const PORT = process.env.PORT || 5005;
@@ -13,6 +14,7 @@ app.use(bodyParser.json());
 
 // Routes
 app.use('/api/v1', apiRoutes);
+app.use('/api/v1/mpesa', mpesaRoutes);
 
 // Root Health Check
 app.get('/', (req, res) => {

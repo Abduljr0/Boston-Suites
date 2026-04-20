@@ -717,10 +717,120 @@ input:disabled+.slider {
 }
 
 /* Responsive fixes */
-@media (max-width: 768px) {
-    .view-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
+/* Payment Module Enhancements */
+.payment-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    background: var(--bg-color);
+    /* Matches actual page background */
+    padding: 0.4rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.success-icon {
+    animation: scaleIn 0.5s ease-out forwards;
+}
+
+@keyframes scaleIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
     }
+
+    70% {
+        transform: scale(1.2);
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.theme-dark .payment-tabs {
+    background: #161b22;
+}
+
+.payment-tab {
+    flex: 1;
+    padding: 0.8rem;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.payment-tab i {
+    font-size: 1.1rem;
+}
+
+.payment-tab i.fa-mobile-alt {
+    color: #27ae60;
+    /* M-Pesa Green */
+}
+
+.payment-tab i.fa-credit-card {
+    color: #8e44ad;
+    /* Card Violet */
+}
+
+.payment-tab.active {
+    background: var(--bg-color);
+    /* Matches actual page background */
+    border: 2px solid var(--primary-color);
+}
+
+.payment-tab.active i {
+    transform: scale(1.2);
+}
+
+.theme-dark .payment-tab.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.theme-dark .payment-tab.active i {
+    color: #fff !important;
+}
+
+.input-with-icon {
+    position: relative;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.input-with-icon .form-control {
+    padding-left: 2.8rem;
+}
+
+#payment-status-message {
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+#payment-status-message.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success-color);
+}
+
+#payment-status-message.error {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger-color);
 }
