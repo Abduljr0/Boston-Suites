@@ -107,11 +107,22 @@ router.post('/stkpush', async (req, res) => {
         
         // Step 5: Process Request
         const response = await axios.post(url, requestBody, { headers });
+
+        // ✅ Log confirmation so you can see it in the server terminal
+        console.log('✅ STK Push INITIATED successfully!');
+        console.log(`   📱 Phone       : ${formattedPhone}`);
+        console.log(`   💰 Amount      : KES ${amount}`);
+        console.log(`   🔑 CheckoutID  : ${response.data.CheckoutRequestID}`);
+        console.log(`   📋 MerchantID  : ${response.data.MerchantRequestID}`);
+        console.log(`   💬 Message     : ${response.data.CustomerMessage}`);
+
         return res.json({ success: true, data: response.data });
         
     } catch (error) {
-        console.error("STK Push error: ", error?.response?.data || error.message);
-        res.status(500).json({ success: false, error: error?.response?.data || 'Failed to initiate STK Push.'});
+        const errData = (error.response && error.response.data) || error.message;
+        console.error('❌ STK Push FAILED!');
+        console.error('   Error:', JSON.stringify(errData));
+        res.status(500).json({ success: false, error: errData || 'Failed to initiate STK Push.' });
     }
 });
 

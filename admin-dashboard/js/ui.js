@@ -658,7 +658,81 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Form Submission logic
+        // --- M-Pesa Button: Direct Click Handler ---
+        // The button is type="button" (not submit) so this is the ONLY entry point for M-Pesa payments.
+        const mpesaBtn = document.querySelector('.btn-checkout.mpesa');
+        mpesaBtn?.addEventListener('click', async (e) => {
+            e.preventDefault();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const bookingId = urlParams.get('bookingId');
+            if (!bookingId) return alert('⚠️ Missing Booking ID. Please go back and try again.');
+
+            const phone = document.getElementById('payment-phone-mpesa')?.value.trim();
+            if (!phone) return alert('⚠️ Please enter your M-Pesa phone number.');
+
+            const amount = document.getElementById('payment-summary-content')?.dataset.amount;
+            if (!amount) return alert('⚠️ Could not determine booking amount. Please refresh the page.');
+
+            // Prevent double-clicks
+            mpesaBtn.disabled = true;
+            mpesaBtn.textContent = '⏳ Sending STK Push...';
+
+            // Show Processing View
+            const mainView       = document.getElementById('payment-main-view');
+            const processingView = document.getElementById('payment-processing-view');
+            const successView    = document.getElementById('payment-success-view');
+            mainView.style.display       = 'none';
+            processingView.style.display = 'block';
+            successView.style.display    = 'none';
+
+            try {
+                const stkRes = await fetch(`${API_BASE}/mpesa/stkpush`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phone:            phone,
+                        amount:           amount,
+                        accountReference: `BK-${bookingId.substring(0, 8)}`,
+                        transactionDesc:  'Boston Suites Booking'
+                    })
+                });
+
+                const stkData = await stkRes.json();
+
+                if (stkData.success) {
+                    alert('📲 STK Push sent! Check your phone and enter your M-Pesa PIN.');
+
+                    // Mark booking as PAID in our system
+                    const updateRes = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payment_status: 'PAID' })
+                    });
+
+                    if (updateRes.ok) {
+                        loadPaymentDetails(bookingId);
+                        processingView.style.display = 'none';
+                        successView.style.display    = 'block';
+                    } else {
+                        throw new Error('Booking status update failed after STK Push.');
+                    }
+                } else {
+                    throw new Error(stkData.error?.errorMessage || stkData.error || 'STK Push failed');
+                }
+
+            } catch (err) {
+                console.error('❌ M-Pesa Error:', err);
+                alert('❌ Failed to initiate payment: ' + err.message);
+                // Restore UI
+                processingView.style.display = 'none';
+                mainView.style.display       = 'block';
+                mpesaBtn.disabled            = false;
+                mpesaBtn.textContent         = 'Pay with M-Pesa STK';
+            }
+        });
+
+        // Form Submission logic (handles Card payments + fallback)
         paymentForm?.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -671,6 +745,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!bookingId) {
                 if (activeFormBtn) activeFormBtn.disabled = false;
                 return alert("Missing Booking ID");
+            }
+
+            // M-Pesa is handled exclusively by the .mpesa button click handler.
+            // This submit listener must only process Card payments.
+            const isMpesaTab = document.querySelector('.payment-tab-modern[data-method="mpesa"]')?.classList.contains('active');
+            if (isMpesaTab) {
+                if (activeFormBtn) activeFormBtn.disabled = false;
+                return; // ← Let the click handler take it from here
             }
 
             // Show Processing View
@@ -795,6 +877,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (json.success) {
                 const b = json.data;
+
+                // ── Gate: only show the success view when payment is genuinely confirmed ──
+                if (b.payment_status === 'PAID') {
+                    if (mainView)       mainView.style.display       = 'none';
+                    if (processingView) processingView.style.display = 'none';
+                    if (successView)    successView.style.display    = 'block';
+                } else {
+                    // Unpaid / on_hold → always show the payment form, never the success panel
+                    if (mainView)       mainView.style.display       = 'block';
+                    if (successView)    successView.style.display    = 'none';
+                }
 
                 // Update Badge
                 if (statusBadge) {
